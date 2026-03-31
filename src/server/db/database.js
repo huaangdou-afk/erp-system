@@ -2,7 +2,10 @@ const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, '../../db/erp.db');
+// Use Railway persistent volume mount path if set, otherwise use local dev path
+const DB_PATH = process.env.RAILWAY_VOLUME_MOUNT
+  ? path.join(process.env.RAILWAY_VOLUME_MOUNT, 'erp.db')
+  : path.join(__dirname, '../../db/erp.db');
 
 let db = null;
 

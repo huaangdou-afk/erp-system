@@ -1,0 +1,6 @@
+[railway]
+  builder = "nixpacks"
+  language = "node"
+
+[deploys]
+  startCommand = "node src/server/index.js"

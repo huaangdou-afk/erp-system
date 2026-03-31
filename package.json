@@ -2,11 +2,15 @@
   "name": "erp-system",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "node src/server/index.js",
     "client": "cd src/client && npm run dev",
-    "build": "cd src/client && npm run build"
+    "build": "cd src/client && npm run build",
+    "start": "node src/server/index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
