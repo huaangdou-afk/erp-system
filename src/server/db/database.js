@@ -1,88 +1,134 @@
-const Database = require('better-sqlite3');
+const initSqlJs = require('sql.js');
+const fs = require('fs');
 const path = require('path');
 
-const db = new Database(path.join(__dirname, '../../db/erp.db'));
+const DB_PATH = path.join(__dirname, '../../db/erp.db');
 
-// 启用外键
-db.pragma('foreign_keys = ON');
+let db = null;
 
-// 初始化表
-db.exec(`
-  CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    code TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    spec TEXT DEFAULT '',
-    unit TEXT DEFAULT '个',
-    category TEXT DEFAULT '',
-    purchase_price REAL DEFAULT 0,
-    sale_price REAL DEFAULT 0,
-    stock INTEGER DEFAULT 0,
-    min_stock INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
-  );
+async function getDb() {
+  if (db) return db;
 
-  CREATE TABLE IF NOT EXISTS suppliers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    code TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    contact TEXT DEFAULT '',
-    phone TEXT DEFAULT '',
-    address TEXT DEFAULT '',
-    created_at TEXT DEFAULT (datetime('now'))
-  );
+  const SQL = await initSqlJs();
+  if (fs.existsSync(DB_PATH)) {
+    const buf = fs.readFileSync(DB_PATH);
+    db = new SQL.Database(buf);
+  } else {
+    db = new SQL.Database();
+  }
+  return db;
+}
 
-  CREATE TABLE IF NOT EXISTS customers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    code TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    contact TEXT DEFAULT '',
-    phone TEXT DEFAULT '',
-    address TEXT DEFAULT '',
-    created_at TEXT DEFAULT (datetime('now'))
-  );
+function saveDb() {
+  if (!db) return;
+  const data = db.export();
+  const buf = Buffer.from(data);
+  fs.writeFileSync(DB_PATH, buf);
+}
 
-  CREATE TABLE IF NOT EXISTS purchase_orders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_no TEXT UNIQUE NOT NULL,
-    supplier_id INTEGER,
-    total_amount REAL DEFAULT 0,
-    status TEXT DEFAULT 'pending',
-    created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
-  );
+// Synchronous wrapper using synchronous SQLite methods
+function getDbSync() {
+  if (db) return db;
+  throw new Error('Database not initialized. Call initDb() first.');
+}
 
-  CREATE TABLE IF NOT EXISTS purchase_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id INTEGER NOT NULL,
-    product_id INTEGER NOT NULL,
-    quantity INTEGER NOT NULL,
-    unit_price REAL NOT NULL,
-    subtotal REAL NOT NULL,
-    FOREIGN KEY (order_id) REFERENCES purchase_orders(id),
-    FOREIGN KEY (product_id) REFERENCES products(id)
-  );
+async function initDb() {
+  const SQL = await initSqlJs();
+  if (fs.existsSync(DB_PATH)) {
+    const buf = fs.readFileSync(DB_PATH);
+    db = new SQL.Database(buf);
+  } else {
+    db = new SQL.Database();
+    initSchema();
+  }
+  return db;
+}
 
-  CREATE TABLE IF NOT EXISTS sales_orders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_no TEXT UNIQUE NOT NULL,
-    customer_id INTEGER,
-    total_amount REAL DEFAULT 0,
-    status TEXT DEFAULT 'pending',
-    created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
-  );
+function initSchema() {
+  if (!db) return;
+  db.run(`
+    CREATE TABLE IF NOT EXISTS products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      spec TEXT DEFAULT '',
+      unit TEXT DEFAULT '个',
+      category TEXT DEFAULT '',
+      purchase_price REAL DEFAULT 0,
+      sale_price REAL DEFAULT 0,
+      stock INTEGER DEFAULT 0,
+      min_stock INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
 
-  CREATE TABLE IF NOT EXISTS sales_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id INTEGER NOT NULL,
-    product_id INTEGER NOT NULL,
-    quantity INTEGER NOT NULL,
-    unit_price REAL NOT NULL,
-    subtotal REAL NOT NULL,
-    FOREIGN KEY (order_id) REFERENCES sales_orders(id),
-    FOREIGN KEY (product_id) REFERENCES products(id)
-  );
-`);
+    CREATE TABLE IF NOT EXISTS suppliers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      contact TEXT DEFAULT '',
+      phone TEXT DEFAULT '',
+      address TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
 
-module.exports = db;
+    CREATE TABLE IF NOT EXISTS customers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      contact TEXT DEFAULT '',
+      phone TEXT DEFAULT '',
+      address TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS purchase_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_no TEXT UNIQUE NOT NULL,
+      supplier_id INTEGER,
+      total_amount REAL DEFAULT 0,
+      status TEXT DEFAULT 'pending',
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS purchase_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      quantity INTEGER NOT NULL,
+      unit_price REAL NOT NULL,
+      subtotal REAL NOT NULL,
+      FOREIGN KEY (order_id) REFERENCES purchase_orders(id),
+      FOREIGN KEY (product_id) REFERENCES products(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS sales_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_no TEXT UNIQUE NOT NULL,
+      customer_id INTEGER,
+      total_amount REAL DEFAULT 0,
+      status TEXT DEFAULT 'pending',
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (customer_id) REFERENCES customers(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS sales_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      quantity INTEGER NOT NULL,
+      unit_price REAL NOT NULL,
+      subtotal REAL NOT NULL,
+      FOREIGN KEY (order_id) REFERENCES sales_orders(id),
+      FOREIGN KEY (product_id) REFERENCES products(id)
+    );
+  `);
+  saveDb();
+}
+
+module.exports = {
+  getDb,
+  getDbSync,
+  initDb,
+  saveDb,
+};

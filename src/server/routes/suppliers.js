@@ -1,72 +1,113 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/database');
+const { getDb, saveDb } = require('../db/database');
 
-// 列表
-router.get('/', (req, res) => {
-  const { search } = req.query;
-  let sql = 'SELECT * FROM suppliers WHERE 1=1';
-  const params = [];
-  
-  if (search) {
-    sql += ' AND (name LIKE ? OR code LIKE ?)';
-    params.push(`%${search}%`, `%${search}%`);
+// GET /api/suppliers
+router.get('/', async (req, res) => {
+  try {
+    const db = await getDb();
+    const { search } = req.query;
+    let sql = 'SELECT * FROM suppliers WHERE 1=1';
+    const params = [];
+
+    if (search) {
+      sql += ' AND (name LIKE ? OR code LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    sql += ' ORDER BY created_at DESC';
+
+    const stmt = db.prepare(sql);
+    if (params.length) stmt.bind(params);
+    const suppliers = [];
+    while (stmt.step()) suppliers.push(stmt.getAsObject());
+    stmt.free();
+    res.json({ success: true, data: suppliers });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
-  
-  sql += ' ORDER BY created_at DESC';
-  const suppliers = db.prepare(sql).all(...params);
-  res.json({ success: true, data: suppliers });
 });
 
-// 新增
-router.post('/', (req, res) => {
-  const { code, name, contact, phone, address } = req.body;
-  
-  if (!code || !name) {
-    return res.status(400).json({ success: false, message: '编码和名称必填' });
+// POST /api/suppliers
+router.post('/', async (req, res) => {
+  try {
+    const db = await getDb();
+    const { code, name, contact, phone, address } = req.body;
+
+    if (!code || !name) {
+      return res.status(400).json({ success: false, message: '编码和名称必填' });
+    }
+
+    const check = db.prepare('SELECT id FROM suppliers WHERE code = ?');
+    check.bind([code]);
+    if (check.step()) { check.free(); return res.status(400).json({ success: false, message: '编码已存在' }); }
+    check.free();
+
+    db.run(
+      `INSERT INTO suppliers (code, name, contact, phone, address) VALUES (?, ?, ?, ?, ?)`,
+      [code, name, contact || '', phone || '', address || '']
+    );
+    saveDb();
+
+    const newId = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
+    const stmt = db.prepare('SELECT * FROM suppliers WHERE id = ?');
+    stmt.bind([newId]);
+    stmt.step();
+    const supplier = stmt.getAsObject();
+    stmt.free();
+    res.json({ success: true, data: supplier });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
-  
-  const existing = db.prepare('SELECT id FROM suppliers WHERE code = ?').get(code);
-  if (existing) {
-    return res.status(400).json({ success: false, message: '编码已存在' });
-  }
-  
-  const result = db.prepare(`
-    INSERT INTO suppliers (code, name, contact, phone, address)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(code, name, contact || '', phone || '', address || '');
-  
-  const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(result.lastInsertRowid);
-  res.json({ success: true, data: supplier });
 });
 
-// 更新
-router.put('/:id', (req, res) => {
-  const { name, contact, phone, address } = req.body;
-  
-  const existing = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(req.params.id);
-  if (!existing) return res.status(404).json({ success: false, message: '供应商不存在' });
-  
-  db.prepare(`UPDATE suppliers SET name=?, contact=?, phone=?, address=? WHERE id=?`)
-    .run(name, contact, phone, address, req.params.id);
-  
-  const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(req.params.id);
-  res.json({ success: true, data: supplier });
+// PUT /api/suppliers/:id
+router.put('/:id', async (req, res) => {
+  try {
+    const db = await getDb();
+    const { name, contact, phone, address } = req.body;
+
+    const check = db.prepare('SELECT * FROM suppliers WHERE id = ?');
+    check.bind([Number(req.params.id)]);
+    if (!check.step()) { check.free(); return res.status(404).json({ success: false, message: '供应商不存在' }); }
+    check.free();
+
+    db.run(`UPDATE suppliers SET name=?, contact=?, phone=?, address=? WHERE id=?`,
+      [name, contact, phone, address, Number(req.params.id)]);
+    saveDb();
+
+    const stmt = db.prepare('SELECT * FROM suppliers WHERE id = ?');
+    stmt.bind([Number(req.params.id)]);
+    stmt.step();
+    const supplier = stmt.getAsObject();
+    stmt.free();
+    res.json({ success: true, data: supplier });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
-// 删除
-router.delete('/:id', (req, res) => {
-  const existing = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(req.params.id);
-  if (!existing) return res.status(404).json({ success: false, message: '供应商不存在' });
-  
-  // 检查是否有采购单引用
-  const ref = db.prepare('SELECT id FROM purchase_orders WHERE supplier_id = ? LIMIT 1').get(req.params.id);
-  if (ref) {
-    return res.status(400).json({ success: false, message: '该供应商有采购单关联，无法删除' });
+// DELETE /api/suppliers/:id
+router.delete('/:id', async (req, res) => {
+  try {
+    const db = await getDb();
+    const id = Number(req.params.id);
+
+    const check = db.prepare('SELECT * FROM suppliers WHERE id = ?');
+    check.bind([id]);
+    if (!check.step()) { check.free(); return res.status(404).json({ success: false, message: '供应商不存在' }); }
+    check.free();
+
+    const ref = db.prepare('SELECT id FROM purchase_orders WHERE supplier_id = ? LIMIT 1');
+    ref.bind([id]);
+    if (ref.step()) { ref.free(); return res.status(400).json({ success: false, message: '该供应商有采购单关联，无法删除' }); }
+    ref.free();
+
+    db.run('DELETE FROM suppliers WHERE id = ?', [id]);
+    saveDb();
+    res.json({ success: true, message: '删除成功' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
-  
-  db.prepare('DELETE FROM suppliers WHERE id = ?').run(req.params.id);
-  res.json({ success: true, message: '删除成功' });
 });
 
 module.exports = router;
