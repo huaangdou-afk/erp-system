@@ -5,9 +5,19 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+environment:
+  name: github-pages
+  url: https://huaangdou-afk.github.io/erp-system/
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: github-pages
     
     steps:
       - name: Checkout
