@@ -26,17 +26,11 @@ services:
     runtime: node
     rootDir: src/client
     buildCommand: npm install && npm run build
-    startCommand: npm run preview -- --port 3000
+    startCommand: node server.cjs
     autoDeploy: true
     plan: free
     numInstances: 1
-    headers:
-      - path: "/*"
-        name: Cache-Control
-        value: public, max-age=0, must-revalidate
     envVars:
       - key: VITE_API_URL
-        fromService: erp-backend
-        fromServiceEnvVar: RENDER_URL
-        # 部署后手动更新为实际后端地址，格式: https://erp-backend-xxxx.onrender.com
-        value: ""
+        value: https://erp-backend.onrender.com
+        sync: false
