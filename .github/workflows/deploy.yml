@@ -5,8 +5,51 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Railway 已配置 GitHub 自动部署，push 代码即自动触发后端+前端部署
-# Railway.toml 指定了后端 Root Directory: src/server
-# 前端 Root Directory: src/client
-# 无需 GitHub Actions 调用 API
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy-frontend:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install deps
+        run: |
+          npm ci
+          cd src/client && npm install
+
+      - name: Build frontend
+        run: |
+          cd src/client
+          npm run build
+        env:
+          VITE_API_URL: https://erp-backend-production-f9b4.up.railway.app
+
+      - name: Copy 404.html
+        run: cp src/client/dist/index.html src/client/dist/404.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: src/client/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
