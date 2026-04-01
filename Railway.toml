@@ -1,6 +1,9 @@
 [railway]
-  dockerfile = "Dockerfile"
+  builder = "nixpacks"
   language = "node"
+
+[deploy]
+  startCommand = "node src/server/index.js"
 
 [disk]
   name = "erp-backend-db"

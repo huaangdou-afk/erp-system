@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+const { execSync } = require('child_process');
 const { initDb, getDb } = require('./db/database');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -13,12 +15,25 @@ const inventoryRouter = require('./routes/inventory');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const CLIENT_DIST = path.join(__dirname, '../client/dist');
+
+// Build frontend if not built (fallback for Railway deploy)
+if (!fs.existsSync(CLIENT_DIST) || !fs.existsSync(path.join(CLIENT_DIST, 'index.html'))) {
+  console.log('Building frontend...');
+  try {
+    execSync('cd ../client && npm install && npm run build', { stdio: 'inherit' });
+  } catch (e) {
+    console.warn('Frontend build failed, serving API only');
+  }
+}
 
 app.use(cors());
 app.use(express.json());
 
 // Serve built frontend static files
-app.use(express.static(path.join(__dirname, '../client/dist')));
+if (fs.existsSync(CLIENT_DIST)) {
+  app.use(express.static(CLIENT_DIST));
+}
 
 // Routes
 app.use('/api/products', productsRouter);
@@ -83,7 +98,12 @@ app.get('/api/stats', async (req, res, next) => {
 // SPA fallback - serve index.html for all non-API routes
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    const indexPath = path.join(CLIENT_DIST, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(503).json({ error: 'Frontend not built yet. Please retry in a moment.' });
+    }
   }
 });
 
