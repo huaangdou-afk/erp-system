@@ -1,5 +1,4 @@
 node_modules/
 src/db/erp.db
 src/client/node_modules/
-src/client/dist/
 *.log
