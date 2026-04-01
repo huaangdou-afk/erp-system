@@ -10,8 +10,7 @@
     "server": "node src/server/index.js",
     "client": "cd src/client && npm run dev",
     "build": "cd src/client && npm run build",
-    "start": "node src/server/index.js",
-    "postinstall": "npm run build"
+    "start": "node src/server/index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
