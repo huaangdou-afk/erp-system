@@ -1,9 +1,6 @@
 [railway]
   dockerfile = "Dockerfile"
 
-[deploy]
-  startCommand = "node src/server/index.js"
-
 [disk]
   name = "erp-backend-db"
   mountPath = "/app/src/db"
