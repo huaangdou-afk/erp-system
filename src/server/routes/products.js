@@ -90,9 +90,9 @@ router.post('/', createProductRules, validate, async (req, res, next) => {
     );
     saveDb();
 
-    const newId = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
-    const stmt = db.prepare('SELECT * FROM products WHERE id = ?');
-    stmt.bind([newId]);
+    // Re-query by code to get the full inserted product
+    const stmt = db.prepare('SELECT * FROM products WHERE code = ?');
+    stmt.bind([code]);
     stmt.step();
     const product = stmt.getAsObject();
     stmt.free();
