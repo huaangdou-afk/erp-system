@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { initDb, getDb } = require('./db/database');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -15,6 +16,9 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve built frontend static files
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Routes
 app.use('/api/products', productsRouter);
@@ -73,6 +77,13 @@ app.get('/api/stats', async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+  }
+});
+
+// SPA fallback - serve index.html for all non-API routes
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
   }
 });
 
