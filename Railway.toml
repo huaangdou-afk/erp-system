@@ -1,6 +1,3 @@
-[railway]
-  dockerfile = "Dockerfile"
-
 [disk]
-  name = "erp-backend-db"
-  mountPath = "/app/src/db"
+name = "erp-backend-db"
+mountPath = "/app/src/db"
