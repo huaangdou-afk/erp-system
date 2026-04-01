@@ -3,6 +3,7 @@
   language = "node"
 
 [deploy]
+  preDeployCommand = "npm run build"
   startCommand = "node src/server/index.js"
 
 [disk]
