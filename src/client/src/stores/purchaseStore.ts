@@ -1,26 +1,16 @@
 import { create } from 'zustand';
-import { purchasesApi } from '../lib/api';
-
-export interface PurchaseItem {
-  id: number;
-  product_id: number;
-  product_name: string;
-  product_code: string;
-  quantity: number;
-  unit_price: number;
-  subtotal: number;
-  unit: string;
-}
+import { purchasesApi, OrderItem } from '../lib/api';
+import { toast } from 'sonner';
 
 export interface PurchaseOrder {
   id: number;
   order_no: string;
   supplier_id: number;
-  supplier_name: string;
+  supplier_name?: string;
   total_amount: number;
   status: 'pending' | 'completed' | 'cancelled';
   created_at: string;
-  items: PurchaseItem[];
+  items: OrderItem[];
 }
 
 interface PurchaseStore {
@@ -42,24 +32,39 @@ export const usePurchaseStore = create<PurchaseStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const res = await purchasesApi.list({ status });
-      set({ orders: res.data.data, loading: false });
+      set({ orders: res.data.data ?? [], loading: false });
     } catch (e: unknown) {
       set({ error: (e as Error).message, loading: false });
     }
   },
 
   create: async (data) => {
-    await purchasesApi.create(data);
-    await get().fetch();
+    try {
+      await purchasesApi.create(data);
+      toast.success('采购单创建成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`采购单创建失败: ${(e as Error).message}`);
+    }
   },
 
   updateStatus: async (id, status) => {
-    await purchasesApi.updateStatus(id, status);
-    await get().fetch();
+    try {
+      await purchasesApi.updateStatus(id, status);
+      toast.success('采购单状态更新成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`采购单状态更新失败: ${(e as Error).message}`);
+    }
   },
 
   remove: async (id) => {
-    await purchasesApi.remove(id);
-    await get().fetch();
+    try {
+      await purchasesApi.remove(id);
+      toast.success('采购单删除成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`采购单删除失败: ${(e as Error).message}`);
+    }
   },
 }));

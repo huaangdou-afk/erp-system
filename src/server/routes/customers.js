@@ -1,9 +1,23 @@
 const express = require('express');
 const router = express.Router();
+const { body } = require('express-validator');
 const { getDb, saveDb } = require('../db/database');
+const validate = require('../middleware/validate');
+
+// Validation rules
+const createCustomerRules = [
+  body('code').trim().notEmpty().withMessage('编码不能为空'),
+  body('name').trim().notEmpty().withMessage('名称不能为空'),
+  body('phone').optional().matches(/^[\d\-\s\+]+$/).withMessage('电话号码格式不正确'),
+];
+
+const updateCustomerRules = [
+  body('name').optional().trim().notEmpty().withMessage('名称不能为空'),
+  body('phone').optional().matches(/^[\d\-\s\+]+$/).withMessage('电话号码格式不正确'),
+];
 
 // GET /api/customers
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const db = await getDb();
     const { search } = req.query;
@@ -23,23 +37,19 @@ router.get('/', async (req, res) => {
     stmt.free();
     res.json({ success: true, data: customers });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // POST /api/customers
-router.post('/', async (req, res) => {
+router.post('/', createCustomerRules, validate, async (req, res, next) => {
   try {
     const db = await getDb();
     const { code, name, contact, phone, address } = req.body;
 
-    if (!code || !name) {
-      return res.status(400).json({ success: false, message: '编码和名称必填' });
-    }
-
     const check = db.prepare('SELECT id FROM customers WHERE code = ?');
     check.bind([code]);
-    if (check.step()) { check.free(); return res.status(400).json({ success: false, message: '编码已存在' }); }
+    if (check.step()) { check.free(); return res.status(400).json({ success: false, error: '编码已存在', details: [{ field: 'code', message: '该编码已被使用' }] }); }
     check.free();
 
     db.run(
@@ -54,21 +64,21 @@ router.post('/', async (req, res) => {
     stmt.step();
     const customer = stmt.getAsObject();
     stmt.free();
-    res.json({ success: true, data: customer });
+    res.status(201).json({ success: true, data: customer });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // PUT /api/customers/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', updateCustomerRules, validate, async (req, res, next) => {
   try {
     const db = await getDb();
     const { name, contact, phone, address } = req.body;
 
     const check = db.prepare('SELECT * FROM customers WHERE id = ?');
     check.bind([Number(req.params.id)]);
-    if (!check.step()) { check.free(); return res.status(404).json({ success: false, message: '客户不存在' }); }
+    if (!check.step()) { check.free(); return res.status(404).json({ success: false, error: '客户不存在' }); }
     check.free();
 
     db.run(`UPDATE customers SET name=?, contact=?, phone=?, address=? WHERE id=?`,
@@ -82,31 +92,31 @@ router.put('/:id', async (req, res) => {
     stmt.free();
     res.json({ success: true, data: customer });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // DELETE /api/customers/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const db = await getDb();
     const id = Number(req.params.id);
 
     const check = db.prepare('SELECT * FROM customers WHERE id = ?');
     check.bind([id]);
-    if (!check.step()) { check.free(); return res.status(404).json({ success: false, message: '客户不存在' }); }
+    if (!check.step()) { check.free(); return res.status(404).json({ success: false, error: '客户不存在' }); }
     check.free();
 
     const ref = db.prepare('SELECT id FROM sales_orders WHERE customer_id = ? LIMIT 1');
     ref.bind([id]);
-    if (ref.step()) { ref.free(); return res.status(400).json({ success: false, message: '该客户有销售单关联，无法删除' }); }
+    if (ref.step()) { ref.free(); return res.status(400).json({ success: false, error: '该客户有销售单关联，无法删除' }); }
     ref.free();
 
     db.run('DELETE FROM customers WHERE id = ?', [id]);
     saveDb();
     res.json({ success: true, message: '删除成功' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 });
 

@@ -1,26 +1,16 @@
 import { create } from 'zustand';
-import { salesApi } from '../lib/api';
-
-export interface SalesItem {
-  id: number;
-  product_id: number;
-  product_name: string;
-  product_code: string;
-  quantity: number;
-  unit_price: number;
-  subtotal: number;
-  unit: string;
-}
+import { salesApi, OrderItem } from '../lib/api';
+import { toast } from 'sonner';
 
 export interface SalesOrder {
   id: number;
   order_no: string;
   customer_id: number;
-  customer_name: string;
+  customer_name?: string;
   total_amount: number;
   status: 'pending' | 'completed' | 'cancelled';
   created_at: string;
-  items: SalesItem[];
+  items: OrderItem[];
 }
 
 interface SalesStore {
@@ -42,24 +32,39 @@ export const useSalesStore = create<SalesStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const res = await salesApi.list({ status });
-      set({ orders: res.data.data, loading: false });
+      set({ orders: res.data.data ?? [], loading: false });
     } catch (e: unknown) {
       set({ error: (e as Error).message, loading: false });
     }
   },
 
   create: async (data) => {
-    await salesApi.create(data);
-    await get().fetch();
+    try {
+      await salesApi.create(data);
+      toast.success('销售单创建成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`销售单创建失败: ${(e as Error).message}`);
+    }
   },
 
   updateStatus: async (id, status) => {
-    await salesApi.updateStatus(id, status);
-    await get().fetch();
+    try {
+      await salesApi.updateStatus(id, status);
+      toast.success('销售单状态更新成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`销售单状态更新失败: ${(e as Error).message}`);
+    }
   },
 
   remove: async (id) => {
-    await salesApi.remove(id);
-    await get().fetch();
+    try {
+      await salesApi.remove(id);
+      toast.success('销售单删除成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`销售单删除失败: ${(e as Error).message}`);
+    }
   },
 }));

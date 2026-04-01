@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const { body } = require('express-validator');
 const { getDb, saveDb } = require('../db/database');
+const validate = require('../middleware/validate');
 
 async function getOrderById(db, id) {
   const stmt = db.prepare(`
@@ -28,7 +30,8 @@ async function getOrderById(db, id) {
   return order;
 }
 
-async function getOrders(db, status) {
+async function getOrders(db, filters = {}) {
+  const { status, start_date, end_date } = filters;
   let sql = `
     SELECT po.*, s.name as supplier_name
     FROM purchase_orders po
@@ -37,6 +40,8 @@ async function getOrders(db, status) {
   `;
   const params = [];
   if (status) { sql += ' AND po.status = ?'; params.push(status); }
+  if (start_date) { sql += ' AND date(po.created_at) >= ?'; params.push(start_date); }
+  if (end_date) { sql += ' AND date(po.created_at) <= ?'; params.push(end_date); }
   sql += ' ORDER BY po.created_at DESC';
 
   const stmt = db.prepare(sql);
@@ -61,33 +66,39 @@ async function getOrders(db, status) {
   return orders;
 }
 
+// Validation rules
+const createPurchaseRules = [
+  body('supplier_id').notEmpty().withMessage('供应商ID不能为空').isInt({ min: 1 }).withMessage('供应商ID必须是正整数'),
+  body('items').isArray({ min: 1 }).withMessage('商品列表不能为空'),
+  body('items.*.product_id').notEmpty().isInt({ min: 1 }).withMessage('商品ID无效'),
+  body('items.*.quantity').isInt({ min: 1 }).withMessage('数量必须为正整数'),
+  body('items.*.unit_price').isFloat({ min: 0 }).withMessage('单价必须为非负数'),
+];
+
 // GET /api/purchases
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const db = await getDb();
-    const orders = await getOrders(db, req.query.status);
+    const { status, start_date, end_date } = req.query;
+    const orders = await getOrders(db, { status, start_date, end_date });
     res.json({ success: true, data: orders });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // POST /api/purchases
-router.post('/', async (req, res) => {
+router.post('/', createPurchaseRules, validate, async (req, res, next) => {
   try {
     const db = await getDb();
     const { supplier_id, items } = req.body;
-
-    if (!supplier_id || !items || items.length === 0) {
-      return res.status(400).json({ success: false, message: '供应商和商品必填' });
-    }
 
     // Verify supplier
     const supStmt = db.prepare('SELECT * FROM suppliers WHERE id = ?');
     supStmt.bind([supplier_id]);
     if (!supStmt.step()) {
       supStmt.free();
-      return res.status(400).json({ success: false, message: '供应商不存在' });
+      return res.status(400).json({ success: false, error: '供应商不存在' });
     }
     supStmt.free();
 
@@ -107,7 +118,7 @@ router.post('/', async (req, res) => {
       prodStmt.bind([item.product_id]);
       if (!prodStmt.step()) {
         prodStmt.free();
-        throw new Error(`商品ID ${item.product_id} 不存在`);
+        throw Object.assign(new Error(`商品ID ${item.product_id} 不存在`), { status: 400 });
       }
       prodStmt.free();
 
@@ -121,14 +132,14 @@ router.post('/', async (req, res) => {
 
     saveDb();
     const order = await getOrderById(db, order_id);
-    res.json({ success: true, data: order });
+    res.status(201).json({ success: true, data: order });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // PUT /api/purchases/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const db = await getDb();
     const { status } = req.body;
@@ -136,11 +147,11 @@ router.put('/:id', async (req, res) => {
 
     const check = db.prepare('SELECT * FROM purchase_orders WHERE id = ?');
     check.bind([id]);
-    if (!check.step()) { check.free(); return res.status(404).json({ success: false, message: '采购单不存在' }); }
+    if (!check.step()) { check.free(); return res.status(404).json({ success: false, error: '采购单不存在' }); }
     check.free();
 
     if (!['pending', 'completed', 'cancelled'].includes(status)) {
-      return res.status(400).json({ success: false, message: '无效状态' });
+      return res.status(400).json({ success: false, error: '无效状态' });
     }
 
     db.run('UPDATE purchase_orders SET status = ? WHERE id = ?', [status, id]);
@@ -148,24 +159,24 @@ router.put('/:id', async (req, res) => {
     const order = await getOrderById(db, id);
     res.json({ success: true, data: order });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // DELETE /api/purchases/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const db = await getDb();
     const id = Number(req.params.id);
 
     const check = db.prepare('SELECT * FROM purchase_orders WHERE id = ?');
     check.bind([id]);
-    if (!check.step()) { check.free(); return res.status(404).json({ success: false, message: '采购单不存在' }); }
+    if (!check.step()) { check.free(); return res.status(404).json({ success: false, error: '采购单不存在' }); }
     const order = check.getAsObject();
     check.free();
 
     if (order.status === 'completed') {
-      return res.status(400).json({ success: false, message: '已完成的采购单不可删除' });
+      return res.status(400).json({ success: false, error: '已完成的采购单不可删除' });
     }
 
     db.run('DELETE FROM purchase_items WHERE order_id = ?', [id]);
@@ -173,7 +184,7 @@ router.delete('/:id', async (req, res) => {
     saveDb();
     res.json({ success: true, message: '删除成功' });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    next(err);
   }
 });
 

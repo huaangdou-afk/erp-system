@@ -1,45 +1,12 @@
-name: Deploy to GitHub Pages
+name: Deploy ERP System
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-concurrency:
-  group: pages
-  cancel-in-progress: true
+# Railway 已配置 GitHub 自动部署，push 代码即自动触发后端+前端部署
+# Railway.toml 指定了后端 Root Directory: src/server
+# 前端 Root Directory: src/client
+# 无需 GitHub Actions 调用 API
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    environment: github-pages
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install backend deps
-        run: npm install
-
-      - name: Build frontend
-        run: |
-          cd src/client
-          npm install
-          npm run build
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: src/client/dist
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4

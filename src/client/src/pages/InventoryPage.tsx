@@ -48,36 +48,48 @@ export default function InventoryPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-slate-800">库存查询</h1>
-      </div>
-
-      <div className="flex gap-1 mb-4">
-        <button
-          className={`btn text-sm ${tab === 'all' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setTab('all')}
-        >
-          全部库存 ({items.length})
-        </button>
-        <button
-          className={`btn text-sm ${tab === 'low' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setTab('low')}
-        >
-          库存预警 ({lowStockItems.length})
-        </button>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">库存查询</h1>
+          <p className="page-subtitle">实时监控商品库存状态与预警信息</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            className={`btn text-sm gap-1.5 ${tab === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setTab('all')}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+            全部 ({items.length})
+          </button>
+          <button
+            className={`btn text-sm gap-1.5 ${tab === 'low' ? 'btn-danger' : 'btn-secondary'}`}
+            onClick={() => setTab('low')}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            库存预警 ({lowStockItems.length})
+          </button>
+        </div>
       </div>
 
       {tab === 'low' && lowStockItems.length > 0 && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-700 font-medium mb-2">以下商品库存低于最低预警线：</p>
-          <ul className="space-y-1">
-            {lowStockItems.map(item => (
-              <li key={item.id} className="text-sm text-red-600">
-                <span className="font-medium">{item.name}</span> ({item.code}) —
-                当前库存 <strong>{item.stock}</strong> / 最低 {item.min_stock}，还差 {item.min_stock - item.stock}
-              </li>
-            ))}
-          </ul>
+        <div className="mb-4 p-4 bg-red-50/80 border border-red-200 rounded-xl flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
+            <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-red-700 mb-2">以下商品库存低于最低预警线：</p>
+            <ul className="space-y-1.5">
+              {lowStockItems.map(item => (
+                <li key={item.id} className="text-sm text-red-600 flex items-center gap-2">
+                  <span className="font-semibold min-w-[120px]">{item.name}</span>
+                  <span className="text-red-400">({item.code})</span>
+                  <span>当前库存 <strong>{item.stock}</strong> / 最低 {item.min_stock}，还差 <strong>{item.min_stock - item.stock}</strong></span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
 

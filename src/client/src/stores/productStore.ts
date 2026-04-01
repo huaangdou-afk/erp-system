@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { productsApi } from '../lib/api';
+import { toast } from 'sonner';
 
 export interface Product {
   id: number;
@@ -34,24 +35,39 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const res = await productsApi.list({ search, category });
-      set({ items: res.data.data, loading: false });
+      set({ items: res.data.data ?? [], loading: false });
     } catch (e: unknown) {
       set({ error: (e as Error).message, loading: false });
     }
   },
 
   create: async (data) => {
-    await productsApi.create(data);
-    await get().fetch();
+    try {
+      await productsApi.create(data as any);
+      toast.success('商品创建成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`商品创建失败: ${(e as Error).message}`);
+    }
   },
 
   update: async (id, data) => {
-    await productsApi.update(id, data);
-    await get().fetch();
+    try {
+      await productsApi.update(id, data);
+      toast.success('商品更新成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`商品更新失败: ${(e as Error).message}`);
+    }
   },
 
   remove: async (id) => {
-    await productsApi.remove(id);
-    await get().fetch();
+    try {
+      await productsApi.remove(id);
+      toast.success('商品删除成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`商品删除失败: ${(e as Error).message}`);
+    }
   },
 }));

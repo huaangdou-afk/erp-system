@@ -1,9 +1,29 @@
 const express = require('express');
 const router = express.Router();
+const { body } = require('express-validator');
 const { getDb, saveDb } = require('../db/database');
+const validate = require('../middleware/validate');
+
+// Validation rules
+const createProductRules = [
+  body('code').trim().notEmpty().withMessage('编码不能为空'),
+  body('name').trim().notEmpty().withMessage('名称不能为空'),
+  body('purchase_price').optional().isFloat({ min: 0 }).withMessage('采购价格必须为非负数字'),
+  body('sale_price').optional().isFloat({ min: 0 }).withMessage('销售价格必须为非负数字'),
+  body('stock').optional().isInt({ min: 0 }).withMessage('库存必须为非负整数'),
+  body('min_stock').optional().isInt({ min: 0 }).withMessage('最低库存必须为非负整数'),
+];
+
+const updateProductRules = [
+  body('name').optional().trim().notEmpty().withMessage('名称不能为空'),
+  body('purchase_price').optional().isFloat({ min: 0 }).withMessage('采购价格必须为非负数字'),
+  body('sale_price').optional().isFloat({ min: 0 }).withMessage('销售价格必须为非负数字'),
+  body('stock').optional().isInt({ min: 0 }).withMessage('库存必须为非负整数'),
+  body('min_stock').optional().isInt({ min: 0 }).withMessage('最低库存必须为非负整数'),
+];
 
 // GET /api/products
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const db = await getDb();
     const { search, category } = req.query;
@@ -27,43 +47,39 @@ router.get('/', async (req, res) => {
     stmt.free();
     res.json({ success: true, data: products });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // GET /api/products/:id
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const db = await getDb();
     const stmt = db.prepare('SELECT * FROM products WHERE id = ?');
     stmt.bind([Number(req.params.id)]);
     if (!stmt.step()) {
       stmt.free();
-      return res.status(404).json({ success: false, message: '商品不存在' });
+      return res.status(404).json({ success: false, error: '商品不存在' });
     }
     const product = stmt.getAsObject();
     stmt.free();
     res.json({ success: true, data: product });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // POST /api/products
-router.post('/', async (req, res) => {
+router.post('/', createProductRules, validate, async (req, res, next) => {
   try {
     const db = await getDb();
     const { code, name, spec, unit, category, purchase_price, sale_price, stock, min_stock } = req.body;
-
-    if (!code || !name) {
-      return res.status(400).json({ success: false, message: '编码和名称必填' });
-    }
 
     const check = db.prepare('SELECT id FROM products WHERE code = ?');
     check.bind([code]);
     if (check.step()) {
       check.free();
-      return res.status(400).json({ success: false, message: '编码已存在' });
+      return res.status(400).json({ success: false, error: '编码已存在', details: [{ field: 'code', message: '该编码已被使用' }] });
     }
     check.free();
 
@@ -80,14 +96,14 @@ router.post('/', async (req, res) => {
     stmt.step();
     const product = stmt.getAsObject();
     stmt.free();
-    res.json({ success: true, data: product });
+    res.status(201).json({ success: true, data: product });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // PUT /api/products/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', updateProductRules, validate, async (req, res, next) => {
   try {
     const db = await getDb();
     const { name, spec, unit, category, purchase_price, sale_price, stock, min_stock } = req.body;
@@ -96,7 +112,7 @@ router.put('/:id', async (req, res) => {
     check.bind([Number(req.params.id)]);
     if (!check.step()) {
       check.free();
-      return res.status(404).json({ success: false, message: '商品不存在' });
+      return res.status(404).json({ success: false, error: '商品不存在' });
     }
     check.free();
 
@@ -113,19 +129,19 @@ router.put('/:id', async (req, res) => {
     stmt.free();
     res.json({ success: true, data: product });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // DELETE /api/products/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const db = await getDb();
     const check = db.prepare('SELECT * FROM products WHERE id = ?');
     check.bind([Number(req.params.id)]);
     if (!check.step()) {
       check.free();
-      return res.status(404).json({ success: false, message: '商品不存在' });
+      return res.status(404).json({ success: false, error: '商品不存在' });
     }
     check.free();
 
@@ -133,7 +149,7 @@ router.delete('/:id', async (req, res) => {
     saveDb();
     res.json({ success: true, message: '删除成功' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 });
 

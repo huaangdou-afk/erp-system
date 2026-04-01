@@ -2,5 +2,9 @@
   builder = "nixpacks"
   language = "node"
 
-[deploys]
+[deploy]
   startCommand = "node src/server/index.js"
+
+[disk]
+  name = "erp-backend-db"
+  mountPath = "/app/src/db"

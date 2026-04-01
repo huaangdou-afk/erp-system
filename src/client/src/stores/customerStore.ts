@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { customersApi } from '../lib/api';
+import { toast } from 'sonner';
 
 export interface Customer {
   id: number;
@@ -30,24 +31,39 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const res = await customersApi.list({ search });
-      set({ items: res.data.data, loading: false });
+      set({ items: res.data.data ?? [], loading: false });
     } catch (e: unknown) {
       set({ error: (e as Error).message, loading: false });
     }
   },
 
   create: async (data) => {
-    await customersApi.create(data);
-    await get().fetch();
+    try {
+      await customersApi.create(data as any);
+      toast.success('客户创建成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`客户创建失败: ${(e as Error).message}`);
+    }
   },
 
   update: async (id, data) => {
-    await customersApi.update(id, data);
-    await get().fetch();
+    try {
+      await customersApi.update(id, data);
+      toast.success('客户更新成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`客户更新失败: ${(e as Error).message}`);
+    }
   },
 
   remove: async (id) => {
-    await customersApi.remove(id);
-    await get().fetch();
+    try {
+      await customersApi.remove(id);
+      toast.success('客户删除成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`客户删除失败: ${(e as Error).message}`);
+    }
   },
 }));

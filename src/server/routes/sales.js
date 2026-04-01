@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const { body } = require('express-validator');
 const { getDb, saveDb } = require('../db/database');
+const validate = require('../middleware/validate');
 
 async function getOrderById(db, id) {
   const stmt = db.prepare(`
@@ -28,7 +30,8 @@ async function getOrderById(db, id) {
   return order;
 }
 
-async function getOrders(db, status) {
+async function getOrders(db, filters = {}) {
+  const { status, start_date, end_date } = filters;
   let sql = `
     SELECT so.*, c.name as customer_name
     FROM sales_orders so
@@ -37,6 +40,8 @@ async function getOrders(db, status) {
   `;
   const params = [];
   if (status) { sql += ' AND so.status = ?'; params.push(status); }
+  if (start_date) { sql += ' AND date(so.created_at) >= ?'; params.push(start_date); }
+  if (end_date) { sql += ' AND date(so.created_at) <= ?'; params.push(end_date); }
   sql += ' ORDER BY so.created_at DESC';
 
   const stmt = db.prepare(sql);
@@ -61,33 +66,39 @@ async function getOrders(db, status) {
   return orders;
 }
 
+// Validation rules
+const createSalesRules = [
+  body('customer_id').notEmpty().withMessage('客户ID不能为空').isInt({ min: 1 }).withMessage('客户ID必须是正整数'),
+  body('items').isArray({ min: 1 }).withMessage('商品列表不能为空'),
+  body('items.*.product_id').notEmpty().isInt({ min: 1 }).withMessage('商品ID无效'),
+  body('items.*.quantity').isInt({ min: 1 }).withMessage('数量必须为正整数'),
+  body('items.*.unit_price').isFloat({ min: 0 }).withMessage('单价必须为非负数'),
+];
+
 // GET /api/sales
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const db = await getDb();
-    const orders = await getOrders(db, req.query.status);
+    const { status, start_date, end_date } = req.query;
+    const orders = await getOrders(db, { status, start_date, end_date });
     res.json({ success: true, data: orders });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // POST /api/sales
-router.post('/', async (req, res) => {
+router.post('/', createSalesRules, validate, async (req, res, next) => {
   try {
     const db = await getDb();
     const { customer_id, items } = req.body;
-
-    if (!customer_id || !items || items.length === 0) {
-      return res.status(400).json({ success: false, message: '客户和商品必填' });
-    }
 
     // Verify customer
     const custStmt = db.prepare('SELECT * FROM customers WHERE id = ?');
     custStmt.bind([customer_id]);
     if (!custStmt.step()) {
       custStmt.free();
-      return res.status(400).json({ success: false, message: '客户不存在' });
+      return res.status(400).json({ success: false, error: '客户不存在' });
     }
     custStmt.free();
 
@@ -97,14 +108,14 @@ router.post('/', async (req, res) => {
       prodStmt.bind([item.product_id]);
       if (!prodStmt.step()) {
         prodStmt.free();
-        return res.status(400).json({ success: false, message: `商品ID ${item.product_id} 不存在` });
+        return res.status(400).json({ success: false, error: `商品ID ${item.product_id} 不存在` });
       }
       const product = prodStmt.getAsObject();
       prodStmt.free();
       if (product.stock < item.quantity) {
         return res.status(400).json({
           success: false,
-          message: `商品【${product.name}】库存不足，当前库存 ${product.stock}，需要 ${item.quantity}`,
+          error: `商品【${product.name}】库存不足，当前库存 ${product.stock}，需要 ${item.quantity}`,
         });
       }
     }
@@ -137,14 +148,14 @@ router.post('/', async (req, res) => {
 
     saveDb();
     const order = await getOrderById(db, order_id);
-    res.json({ success: true, data: order });
+    res.status(201).json({ success: true, data: order });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // PUT /api/sales/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const db = await getDb();
     const { status } = req.body;
@@ -152,12 +163,12 @@ router.put('/:id', async (req, res) => {
 
     const check = db.prepare('SELECT * FROM sales_orders WHERE id = ?');
     check.bind([id]);
-    if (!check.step()) { check.free(); return res.status(404).json({ success: false, message: '销售单不存在' }); }
+    if (!check.step()) { check.free(); return res.status(404).json({ success: false, error: '销售单不存在' }); }
     const order = check.getAsObject();
     check.free();
 
     if (!['pending', 'completed', 'cancelled'].includes(status)) {
-      return res.status(400).json({ success: false, message: '无效状态' });
+      return res.status(400).json({ success: false, error: '无效状态' });
     }
 
     if (order.status === 'completed' && status === 'cancelled') {
@@ -175,24 +186,24 @@ router.put('/:id', async (req, res) => {
     const updated = await getOrderById(db, id);
     res.json({ success: true, data: updated });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // DELETE /api/sales/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const db = await getDb();
     const id = Number(req.params.id);
 
     const check = db.prepare('SELECT * FROM sales_orders WHERE id = ?');
     check.bind([id]);
-    if (!check.step()) { check.free(); return res.status(404).json({ success: false, message: '销售单不存在' }); }
+    if (!check.step()) { check.free(); return res.status(404).json({ success: false, error: '销售单不存在' }); }
     const order = check.getAsObject();
     check.free();
 
     if (order.status === 'completed') {
-      return res.status(400).json({ success: false, message: '已完成的销售单不可删除' });
+      return res.status(400).json({ success: false, error: '已完成的销售单不可删除' });
     }
 
     db.run('DELETE FROM sales_items WHERE order_id = ?', [id]);
@@ -200,7 +211,7 @@ router.delete('/:id', async (req, res) => {
     saveDb();
     res.json({ success: true, message: '删除成功' });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    next(err);
   }
 });
 

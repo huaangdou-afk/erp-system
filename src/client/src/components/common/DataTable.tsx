@@ -9,6 +9,14 @@ import {
   ColumnDef,
   SortingState,
 } from '@tanstack/react-table';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../ui/table';
 
 interface DataTableProps<T> {
   columns: ColumnDef<T, unknown>[];
@@ -63,7 +71,7 @@ export default function DataTable<T extends { id: number }>({
     <div className="flex flex-col gap-4">
       {/* Toolbar */}
       <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
+        <div className="relative flex-1 max-w-sm">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="8" />
@@ -79,7 +87,7 @@ export default function DataTable<T extends { id: number }>({
           />
         </div>
         {loading && (
-          <span className="text-sm text-slate-400 animate-pulse flex items-center gap-1.5">
+          <span className="text-sm text-slate-400 animate-pulse flex items-center gap-1.5 ml-auto">
             <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -87,76 +95,85 @@ export default function DataTable<T extends { id: number }>({
             加载中...
           </span>
         )}
+        {!loading && totalRows > 0 && (
+          <span className="ml-auto text-xs text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+            共 {totalRows} 条
+          </span>
+        )}
       </div>
 
       {/* Table */}
-      <div className="card overflow-hidden">
+      <div className="table-container">
         <div className="table-wrapper">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-100 border-b border-slate-200 sticky top-0 z-10">
+          <Table className="w-full text-sm">
+            <TableHeader>
               {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id}>
+                <TableRow key={hg.id} className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 hover:bg-slate-50">
                   {hg.headers.map((header) => (
-                    <th
+                    <TableHead
                       key={header.id}
-                      className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide whitespace-nowrap"
+                      className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider whitespace-nowrap first:rounded-tl-xl last:rounded-tr-xl"
                     >
                       {header.isPlaceholder
                         ? null
                         : flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
+                    </TableHead>
                   ))}
-                </tr>
+                </TableRow>
               ))}
-            </thead>
-            <tbody className="divide-y divide-slate-100">
+            </TableHeader>
+            <TableBody className="divide-y divide-slate-50">
               {rowCount === 0 ? (
                 <tr>
-                  <td colSpan={allColumns.length} className="px-4 py-16 text-center">
-                    <div className="flex flex-col items-center gap-2 text-slate-400">
-                      <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <p className="text-sm font-medium">暂无数据</p>
-                      <p className="text-xs">请尝试添加新记录或调整搜索条件</p>
+                  <td colSpan={allColumns.length} className="px-4 py-20 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-500">暂无数据</p>
+                        <p className="text-xs text-slate-400 mt-1">请尝试添加新记录或调整搜索条件</p>
+                      </div>
                     </div>
                   </td>
                 </tr>
               ) : (
                 table.getRowModel().rows.map((row, index) => (
-                  <tr
+                  <TableRow
                     key={row.id}
-                    className={`transition-colors duration-100 ${
-                      index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
-                    } hover:bg-primary-50/60`}
+                    className={`transition-colors duration-100 group ${
+                      index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'
+                    } hover:bg-primary-50/50`}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                      <TableCell key={cell.id} className="px-4 py-3.5 text-slate-700 whitespace-nowrap text-sm">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
+                      </TableCell>
                     ))}
-                  </tr>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
       {/* Pagination */}
       {pageCount > 0 && (
         <div className="flex items-center justify-between px-1 text-sm">
-          <p className="text-slate-500">
+          <p className="text-slate-500 text-xs">
             {totalRows === 0 ? (
               '暂无数据'
             ) : (
               <>
-                显示 <span className="font-medium text-slate-700">{startRow}&ndash;{endRow}</span>
-                &nbsp;/&nbsp;共 <span className="font-medium text-slate-700">{totalRows}</span> 条记录
+                显示 <span className="font-semibold text-slate-700">{startRow}&ndash;{endRow}</span>
+                &nbsp;/&nbsp;共 <span className="font-semibold text-slate-700">{totalRows}</span> 条
               </>
             )}
           </p>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {pageCount > 1 && (
               <>
                 <button

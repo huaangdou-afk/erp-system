@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { suppliersApi } from '../lib/api';
+import { toast } from 'sonner';
 
 export interface Supplier {
   id: number;
@@ -30,24 +31,39 @@ export const useSupplierStore = create<SupplierStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const res = await suppliersApi.list({ search });
-      set({ items: res.data.data, loading: false });
+      set({ items: res.data.data ?? [], loading: false });
     } catch (e: unknown) {
       set({ error: (e as Error).message, loading: false });
     }
   },
 
   create: async (data) => {
-    await suppliersApi.create(data);
-    await get().fetch();
+    try {
+      await suppliersApi.create(data as any);
+      toast.success('供应商创建成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`供应商创建失败: ${(e as Error).message}`);
+    }
   },
 
   update: async (id, data) => {
-    await suppliersApi.update(id, data);
-    await get().fetch();
+    try {
+      await suppliersApi.update(id, data);
+      toast.success('供应商更新成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`供应商更新失败: ${(e as Error).message}`);
+    }
   },
 
   remove: async (id) => {
-    await suppliersApi.remove(id);
-    await get().fetch();
+    try {
+      await suppliersApi.remove(id);
+      toast.success('供应商删除成功');
+      await get().fetch();
+    } catch (e: unknown) {
+      toast.error(`供应商删除失败: ${(e as Error).message}`);
+    }
   },
 }));

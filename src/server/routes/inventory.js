@@ -3,7 +3,7 @@ const router = express.Router();
 const { getDb } = require('../db/database');
 
 // GET /api/inventory
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const db = await getDb();
     const stmt = db.prepare(`
@@ -17,12 +17,12 @@ router.get('/', async (req, res) => {
     stmt.free();
     res.json({ success: true, data: products });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 });
 
 // GET /api/inventory/low-stock
-router.get('/low-stock', async (req, res) => {
+router.get('/low-stock', async (req, res, next) => {
   try {
     const db = await getDb();
     const stmt = db.prepare(`
@@ -37,7 +37,7 @@ router.get('/low-stock', async (req, res) => {
     stmt.free();
     res.json({ success: true, data: products });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 });
 

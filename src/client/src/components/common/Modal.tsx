@@ -1,4 +1,11 @@
-import { useEffect, ReactNode } from 'react';
+import { ReactNode } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '../ui/dialog';
 
 interface ModalProps {
   open: boolean;
@@ -17,56 +24,24 @@ const sizeClasses = {
 };
 
 export default function Modal({ open, onClose, title, children, footer, size = 'md' }: ModalProps) {
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (open) document.addEventListener('keydown', handleEsc);
-    return () => document.removeEventListener('keydown', handleEsc);
-  }, [open, onClose]);
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [open]);
-
-  if (!open) return null;
-
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
-      <div className={`modal-panel ${sizeClasses[size]}`} style={{ maxHeight: '85vh' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 rounded-t-xl">
-          <h2 className="text-base font-semibold text-slate-800">{title}</h2>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors duration-150"
-            aria-label="关闭"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M2 2l12 12M14 2L2 14" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="px-6 py-5 max-h-[60vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
+      <DialogContent className={sizeClasses[size]}>
+        <DialogHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-5 rounded-full bg-gradient-primary" />
+            <DialogTitle className="text-base font-bold text-slate-800">{title}</DialogTitle>
+          </div>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-y-auto py-1">
           {children}
         </div>
-
-        {/* Footer */}
         {footer && (
-          <div className="px-6 py-4 border-t border-slate-200 bg-slate-50/60 rounded-b-xl flex items-center justify-end gap-3">
+          <DialogFooter className="modal-footer">
             {footer}
-          </div>
+          </DialogFooter>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -8,6 +8,7 @@ export default {
       },
       colors: {
         primary: {
+          DEFAULT: 'hsl(var(--primary))',
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
@@ -18,10 +19,33 @@ export default {
           700: '#1d4ed8',
           800: '#1e40af',
           900: '#1e3a8a',
+          foreground: 'hsl(var(--primary-foreground))',
         },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
         success: {
           50: '#f0fdf4',
           100: '#dcfce7',
+          200: '#bbf7d0',
           500: '#22c55e',
           600: '#16a34a',
           700: '#15803d',
@@ -29,6 +53,7 @@ export default {
         warning: {
           50: '#fffbeb',
           100: '#fef3c7',
+          200: '#fde68a',
           500: '#f59e0b',
           600: '#d97706',
           700: '#b45309',
@@ -36,10 +61,28 @@ export default {
         danger: {
           50: '#fef2f2',
           100: '#fee2e2',
+          200: '#fecaca',
           500: '#ef4444',
           600: '#dc2626',
           700: '#b91c1c',
         },
+        sidebar: {
+          bg: '#0f172a',
+          hover: '#1e293b',
+          active: '#1e40af',
+          border: '#334155',
+          text: '#cbd5e1',
+          muted: '#64748b',
+        },
+      },
+      backgroundImage: {
+        'gradient-primary': 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+        'gradient-success': 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)',
+        'gradient-warning': 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
+        'gradient-danger': 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+        'gradient-sidebar': 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)',
+        'gradient-card': 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+        'gradient-header': 'linear-gradient(90deg, #f8fafc 0%, #e2e8f0 100%)',
       },
       borderRadius: {
         DEFAULT: '6px',
@@ -60,6 +103,13 @@ export default {
         inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
         primary: '0 0 0 3px rgb(59 130 246 / 0.3)',
         danger: '0 0 0 3px rgb(239 68 68 / 0.3)',
+        'card-hover': '0 4px 20px -4px rgb(0 0 0 / 0.12), 0 2px 8px -2px rgb(0 0 0 / 0.08)',
+        'stat-blue': '0 4px 14px 0 rgb(59 130 246 / 0.35)',
+        'stat-green': '0 4px 14px 0 rgb(34 197 94 / 0.35)',
+        'stat-purple': '0 4px 14px 0 rgb(168 85 247 / 0.35)',
+        'stat-amber': '0 4px 14px 0 rgb(245 158 11 / 0.35)',
+        'stat-teal': '0 4px 14px 0 rgb(20 184 166 / 0.35)',
+        'stat-red': '0 4px 14px 0 rgb(239 68 68 / 0.35)',
       },
       spacing: {
         18: '4.5rem',

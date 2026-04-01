@@ -68,12 +68,12 @@ export default function PurchasesPage() {
 
   const statusBadge = (s: string) => {
     const map: Record<string, string> = {
-      pending: 'bg-amber-100 text-amber-700',
-      completed: 'bg-green-100 text-green-700',
-      cancelled: 'bg-slate-100 text-slate-500',
+      pending: 'badge badge-pending',
+      completed: 'badge badge-success',
+      cancelled: 'badge badge-muted',
     };
     const labels: Record<string, string> = { pending: '待处理', completed: '已完成', cancelled: '已取消' };
-    return <span className={`px-2 py-0.5 rounded text-xs font-medium ${map[s] || ''}`}>{labels[s] || s}</span>;
+    return <span className={map[s] || 'badge badge-muted'}>{labels[s] || s}</span>;
   };
 
   const columns: ColumnDef<PurchaseOrder, unknown>[] = [
@@ -106,9 +106,15 @@ export default function PurchasesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-slate-800">采购管理</h1>
-        <button className="btn btn-primary" onClick={openCreate}>+ 新建采购单</button>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">采购管理</h1>
+          <p className="page-subtitle">管理采购订单与供应商结算</p>
+        </div>
+        <button className="btn btn-primary gap-2" onClick={openCreate}>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+          新建采购单
+        </button>
       </div>
 
       <DataTable columns={columns} data={orders} loading={loading} searchPlaceholder="搜索单号..." renderRowActions={renderActions} />
@@ -167,7 +173,7 @@ export default function PurchasesPage() {
             </p>
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 mt-2">
             <button type="button" className="btn btn-secondary" onClick={() => setModalOpen(false)}>取消</button>
             <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? '保存中...' : '确认采购'}</button>
           </div>
@@ -201,7 +207,7 @@ export default function PurchasesPage() {
                     <td className="px-3 py-2">{item.product_code}</td>
                     <td className="px-3 py-2 text-right">{item.quantity} {item.unit}</td>
                     <td className="px-3 py-2 text-right">¥{item.unit_price.toFixed(2)}</td>
-                    <td className="px-3 py-2 text-right">¥{item.subtotal.toFixed(2)}</td>
+                    <td className="px-3 py-2 text-right">¥{(item.subtotal ?? 0).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
