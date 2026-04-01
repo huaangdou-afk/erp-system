@@ -1,9 +1,7 @@
 [railway]
-  builder = "nixpacks"
-  language = "node"
+  dockerfile = "Dockerfile"
 
 [deploy]
-  preDeployCommand = "npm run build"
   startCommand = "node src/server/index.js"
 
 [disk]
