@@ -26,6 +26,8 @@ function saveDb() {
   if (!db) return;
   const data = db.export();
   const buf = Buffer.from(data);
+  const dir = path.dirname(DB_PATH);
+  fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(DB_PATH, buf);
 }
 
