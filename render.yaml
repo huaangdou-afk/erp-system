@@ -1,0 +1,42 @@
+services:
+  - name: erp-backend
+    region: singapore
+    repo: https://github.com/huaangdou-afk/erp-system
+    branch: main
+    type: web
+    runtime: node
+    rootDir: src/server
+    buildCommand: npm install
+    startCommand: node index.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    plan: free
+    numInstances: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3001"
+
+  - name: erp-frontend
+    region: singapore
+    repo: https://github.com/huaangdou-afk/erp-system
+    branch: main
+    type: web
+    runtime: node
+    rootDir: src/client
+    buildCommand: npm install && npm run build
+    startCommand: npm run preview -- --port 3000
+    autoDeploy: true
+    plan: free
+    numInstances: 1
+    headers:
+      - path: "/*"
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+    envVars:
+      - key: VITE_API_URL
+        fromService: erp-backend
+        fromServiceEnvVar: RENDER_URL
+        # 部署后手动更新为实际后端地址，格式: https://erp-backend-xxxx.onrender.com
+        value: ""
